@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yoube - Radio Streaming</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom animation for player transitions */
+        .player-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .capsule-to-full {
+            animation: expandPlayer 0.3s ease-out forwards;
+        }
+        
+        .full-to-capsule {
+            animation: collapsePlayer 0.3s ease-out forwards;
+        }
+        
+        @keyframes expandPlayer {
+            0% {
+                transform: translateY(0) scale(1);
+                border-radius: 9999px;
+                width: 320px;
+                height: 64px;
+                top: 20px;
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                border-radius: 0.75rem;
+                width: 100%;
+                height: 100%;
+                top: 0;
+            }
+        }
+        
+        @keyframes collapsePlayer {
+            0% {
+                transform: translateY(0) scale(1);
+                border-radius: 0.75rem;
+                width: 100%;
+                height: 100%;
+                top: 0;
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                border-radius: 9999px;
+                width: 320px;
+                height: 64px;
+                top: 20px;
+            }
+        }
+        
+        /* Progress bar styling */
+        .progress-bar {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        
+        .progress-bar::-webkit-slider-track {
+            background: #4b5563;
+            height: 4px;
+            border-radius: 2px;
+        }
+        
+        .progress-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #ec4899;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            margin-top: -4px;
+        }
+        
+        /* Hide scrollbar for sidebar */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* Loading animation */
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #ec4899;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Category card hover effect */
+        .category-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        
+        .category-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Station card hover effect */
+        .station-card {
+            transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+        }
+        
+        .station-card:hover {
+            transform: scale(1.02);
+            background-color: rgba(55, 65, 81, 0.8);
+        }
+        
+        /* Autocomplete dropdown */
+        .autocomplete-dropdown {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        /* Active navigation item */
+        .nav-active {
+            color: #ec4899;
+        }
+        
+        /* Gradient background */
+        .gradient-bg {
+            background: linear-gradient(to bottom, #1f2937, #111827);
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        
+        /* Custom styles for responsive layout */
+        .content-wrapper {
+            padding-bottom: 80px; /* Space for bottom navigation on mobile */
+        }
+        
+        @media (min-width: 1024px) {
+            .content-wrapper {
+                padding-bottom: 0; /* No extra padding on desktop */
+            }
+        }
+        
+        /* Search page padding to avoid capsule player overlap */
+        #search-page {
+            padding-top: 90px; /* Space for capsule player */
+        }
+        
+        @media (min-width: 1024px) {
+            #search-page {
+                padding-top: 30px; /* Less space needed on desktop */
+            }
+        }
+        
+        /* Ensure text truncation works properly */
+        .truncate-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+        
+        /* Recommendation cards in full player */
+        .recommendation-card {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .recommendation-card:hover {
+            transform: scale(1.03);
+            background-color: rgba(55, 65, 81, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen gradient-bg">
+    <!-- Sidebar for Desktop -->
+    <div class="hidden lg:block fixed left-0 top-0 h-full w-64 bg-gray-800 z-40">
+        <div class="p-6">
+            <h1 class="text-2xl font-bold text-pink-400 mb-10">Yoube</h1>
+            <nav>
+                <ul class="space-y-4">
+                    <li>
+                        <a href="#" data-page="home" class="nav-link flex items-center space-x-3 text-white hover:text-pink-400 transition-colors nav-active">
+                            <i class="fas fa-home w-6"></i>
+                            <span>Home</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="search" class="nav-link flex items-center space-x-3 text-white hover:text-pink-400 transition-colors">
+                            <i class="fas fa-search w-6"></i>
+                            <span>Search</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="favorite" class="nav-link flex items-center space-x-3 text-white hover:text-pink-400 transition-colors">
+                            <i class="fas fa-heart w-6"></i>
+                            <span>Favorite</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="recent" class="nav-link flex items-center space-x-3 text-white hover:text-pink-400 transition-colors">
+                            <i class="fas fa-history w-6"></i>
+                            <span>Recent</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="mt-10">
+                <h3 class="text-sm font-semibold text-gray-400 mb-4">PLAYLISTS</h3>
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#" class="flex items-center space-x-3 text-gray-400 hover:text-white transition-colors">
+                            <i class="fas fa-plus-square w-5"></i>
+                            <span>Create Playlist</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center space-x-3 text-gray-400 hover:text-white transition-colors">
+                            <i class="fas fa-heart w-5"></i>
+                            <span>Liked Songs</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="lg:ml-64 content-wrapper">
+        <!-- Home Page -->
+        <div id="home-page" class="page">
+            <div class="container mx-auto px-4 py-8">
+                <!-- Welcome Section -->
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold mb-2">Good morning</h1>
+                    <p class="text-gray-400">What do you want to listen to?</p>
+                </div>
+                
+                <!-- Categories Section -->
+                <div class="mb-10">
+                    <h2 class="text-2xl font-bold mb-6">Browse Categories</h2>
+                    <div id="categories" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        <!-- Categories will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- Popular Stations Section -->
+                <div class="mb-10">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">Popular Stations</h2>
+                        <a href="#" class="text-sm text-gray-400 hover:text-white">SEE ALL</a>
+                    </div>
+                    <div id="popular-stations" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <!-- Popular stations will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- Recommended by Genre Section -->
+                <div class="mb-10">
+                    <h2 class="text-2xl font-bold mb-6">Recommended by Genre</h2>
+                    <div id="genre-recommendations" class="space-y-8">
+                        <!-- Genre recommendations will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Page -->
+        <div id="search-page" class="page hidden">
+            <div class="container mx-auto px-4">
+                <div class="max-w-2xl mx-auto">
+                    <!-- Search Bar with Autocomplete -->
+                    <div class="relative mb-8">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            <input 
+                                type="text" 
+                                id="search-input" 
+                                placeholder="What do you want to listen to?"
+                                class="w-full bg-gray-800 rounded-full py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                            >
+                        </div>
+                        <div id="autocomplete-dropdown" class="absolute top-full left-0 right-0 mt-2 bg-gray-800 rounded-lg shadow-lg hidden autocomplete-dropdown">
+                            <!-- Autocomplete results will be shown here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Search Results -->
+                    <div id="search-results" class="hidden">
+                        <h3 class="text-xl font-bold mb-4">Search Results</h3>
+                        <div id="search-results-container" class="space-y-4">
+                            <!-- Search results will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Searches -->
+                    <div id="recent-searches" class="mb-8">
+                        <h3 class="text-xl font-bold mb-4">Recent Searches</h3>
+                        <div id="recent-searches-container" class="flex flex-wrap gap-2">
+                            <!-- Recent searches will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Browse All -->
+                    <div>
+                        <h3 class="text-xl font-bold mb-4">Browse All</h3>
+                        <div id="browse-all" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <!-- Browse categories will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Favorite Page -->
+        <div id="favorite-page" class="page hidden">
+            <div class="container mx-auto px-4 py-8">
+                <h1 class="text-3xl font-bold mb-8">Your Favorite Stations</h1>
+                <div id="favorite-stations" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Favorite stations will be loaded here -->
+                </div>
+                <div id="no-favorites" class="text-center py-20 hidden">
+                    <i class="fas fa-heart text-6xl text-gray-600 mb-4"></i>
+                    <p class="text-xl text-gray-400">No favorite stations yet</p>
+                    <p class="text-gray-500 mt-2">Click the heart icon on any station to add it to your favorites</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Page -->
+        <div id="recent-page" class="page hidden">
+            <div class="container mx-auto px-4 py-8">
+                <h1 class="text-3xl font-bold mb-8">Recently Played</h1>
+                <div id="recent-stations" class="space-y-4">
+                    <!-- Recent stations will be loaded here -->
+                </div>
+                <div id="no-recent" class="text-center py-20 hidden">
+                    <i class="fas fa-history text-6xl text-gray-600 mb-4"></i>
+                    <p class="text-xl text-gray-400">No recently played stations</p>
+                    <p class="text-gray-500 mt-2">Start listening to see your history here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Capsule Player -->
+    <div id="capsule-player" class="fixed left-1/2 transform -translate-x-1/2 top-5 z-50 bg-gray-800 rounded-full w-80 h-16 flex items-center px-4 shadow-lg cursor-pointer player-transition">
+        <button id="play-pause-btn" class="bg-pink-500 hover:bg-pink-600 rounded-full w-10 h-10 flex items-center justify-center mr-3">
+            <i class="fas fa-play text-white"></i>
+        </button>
+        <div class="flex-1 truncate">
+            <div id="now-playing-title" class="font-semibold truncate-text">Select a station</div>
+            <div id="now-playing-artist" class="text-sm text-gray-400 truncate-text">No station playing</div>
+        </div>
+        <button id="favorite-btn" class="ml-3 text-gray-400 hover:text-pink-500">
+            <i class="far fa-heart"></i>
+        </button>
+    </div>
+
+    <!-- Full Player (Hidden by default) -->
+    <div id="full-player" class="fixed inset-0 bg-gray-900 z-50 hidden">
+        <div class="h-full flex flex-col">
+            <!-- Header -->
+            <div class="p-4 flex justify-between items-center">
+                <button id="back-to-capsule" class="text-white">
+                    <i class="fas fa-chevron-down text-xl"></i>
+                </button>
+                <span class="font-semibold">Now Playing</span>
+                <button id="full-player-favorite-btn" class="text-gray-400 hover:text-pink-500">
+                    <i class="far fa-heart text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Album Art -->
+            <div class="flex-1 flex items-center justify-center p-8">
+                <img id="album-art" src="https://via.placeholder.com/300" alt="Album Art" class="w-64 h-64 rounded-lg shadow-xl">
+            </div>
+            
+            <!-- Song Info -->
+            <div class="px-8 pb-4">
+                <h3 id="full-player-title" class="text-xl font-bold truncate-text">Select a station</h3>
+                <p id="full-player-artist" class="text-gray-400 truncate-text">No station playing</p>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="px-8 pb-6">
+                <div class="flex items-center justify-between text-sm text-gray-400 mb-1">
+                    <span id="current-time">0:00</span>
+                    <span id="total-time">0:00</span>
+                </div>
+                <input type="range" id="progress-bar" class="progress-bar w-full" min="0" max="100" value="0">
+            </div>
+            
+            <!-- Controls -->
+            <div class="flex justify-center items-center space-x-8 pb-6">
+                <button id="prev-btn" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-step-backward text-xl"></i>
+                </button>
+                <button id="full-player-play-pause" class="bg-pink-500 hover:bg-pink-600 rounded-full w-16 h-16 flex items-center justify-center">
+                    <i class="fas fa-play text-white text-xl"></i>
+                </button>
+                <button id="next-btn" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-step-forward text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Recommendations Section -->
+            <div class="px-8 pb-8">
+                <h3 class="text-lg font-semibold mb-4">Recommended Stations</h3>
+                <div id="player-recommendations" class="flex overflow-x-auto space-x-4 pb-2 hide-scrollbar">
+                    <!-- Recommendations will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation for Mobile -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-gray-800 z-40">
+        <div class="flex justify-around items-center py-3">
+            <a href="#" data-page="home" class="nav-link-mobile flex flex-col items-center nav-active">
+                <i class="fas fa-home text-xl mb-1"></i>
+                <span class="text-xs">Home</span>
+            </a>
+            <a href="#" data-page="search" class="nav-link-mobile flex flex-col items-center text-gray-400">
+                <i class="fas fa-search text-xl mb-1"></i>
+                <span class="text-xs">Search</span>
+            </a>
+            <a href="#" data-page="favorite" class="nav-link-mobile flex flex-col items-center text-gray-400">
+                <i class="fas fa-heart text-xl mb-1"></i>
+                <span class="text-xs">Favorite</span>
+            </a>
+            <a href="#" data-page="recent" class="nav-link-mobile flex flex-col items-center text-gray-400">
+                <i class="fas fa-history text-xl mb-1"></i>
+                <span class="text-xs">Recent</span>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let audio = new Audio();
+        let isPlaying = false;
+        let currentStation = null;
+        let stations = [];
+        let playerExpanded = false;
+        let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+        let recent = JSON.parse(localStorage.getItem('recent')) || [];
+        let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || [];
+        let currentPage = 'home';
+
+        // DOM elements
+        const capsulePlayer = document.getElementById('capsule-player');
+        const fullPlayer = document.getElementById('full-player');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const fullPlayerPlayPause = document.getElementById('full-player-play-pause');
+        const backToCapsule = document.getElementById('back-to-capsule');
+        const nowPlayingTitle = document.getElementById('now-playing-title');
+        const nowPlayingArtist = document.getElementById('now-playing-artist');
+        const fullPlayerTitle = document.getElementById('full-player-title');
+        const fullPlayerArtist = document.getElementById('full-player-artist');
+        const albumArt = document.getElementById('album-art');
+        const favoriteBtn = document.getElementById('favorite-btn');
+        const fullPlayerFavoriteBtn = document.getElementById('full-player-favorite-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const currentTime = document.getElementById('current-time');
+        const totalTime = document.getElementById('total-time');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const searchInput = document.getElementById('search-input');
+        const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+        const searchResults = document.getElementById('search-results');
+        const searchResultsContainer = document.getElementById('search-results-container');
+        const recentSearchesContainer = document.getElementById('recent-searches-container');
+        const browseAll = document.getElementById('browse-all');
+        const playerRecommendations = document.getElementById('player-recommendations');
+
+        // Categories
+        const categories = [
+            { name: 'Pop', icon: 'fa-music', color: 'bg-pink-500' },
+            { name: 'Rock', icon: 'fa-guitar', color: 'bg-red-500' },
+            { name: 'Jazz', icon: 'fa-saxophone', color: 'bg-blue-500' },
+            { name: 'Classical', icon: 'fa-violin', color: 'bg-purple-500' },
+            { name: 'Electronic', icon: 'fa-headphones', color: 'bg-green-500' },
+            { name: 'Hip Hop', icon: 'fa-microphone', color: 'bg-yellow-500' },
+            { name: 'Country', icon: 'fa-hat-cowboy', color: 'bg-orange-500' },
+            { name: 'News', icon: 'fa-newspaper', color: 'bg-gray-500' },
+            { name: 'Sports', icon: 'fa-football-ball', color: 'bg-indigo-500' },
+            { name: 'Talk', icon: 'fa-comments', color: 'bg-teal-500' }
+        ];
+
+        // Initialize app
+        async function init() {
+            await fetchRadioStations();
+            displayCategories();
+            displayBrowseAll();
+            displayRecentSearches();
+            updateFavoriteStations();
+            updateRecentStations();
+            setupNavigation();
+        }
+
+        // Fetch radio stations from API
+        async function fetchRadioStations() {
+            try {
+                const response = await fetch('https://de1.api.radio-browser.info/json/stations/topvote/100');
+                stations = await response.json();
+                displayPopularStations(stations.slice(0, 8));
+                displayGenreRecommendations();
+            } catch (error) {
+                console.error('Error fetching radio stations:', error);
+            }
+        }
+
+        // Display categories
+        function displayCategories() {
+            const categoriesContainer = document.getElementById('categories');
+            categoriesContainer.innerHTML = '';
+            
+            categories.forEach(category => {
+                const categoryCard = document.createElement('div');
+                categoryCard.className = `category-card ${category.color} rounded-lg p-6 cursor-pointer`;
+                categoryCard.innerHTML = `
+                    <i class="fas ${category.icon} text-3xl mb-2"></i>
+                    <h3 class="font-semibold">${category.name}</h3>
+                `;
+                categoryCard.addEventListener('click', () => filterByCategory(category.name));
+                categoriesContainer.appendChild(categoryCard);
+            });
+        }
+
+        // Display browse all categories
+        function displayBrowseAll() {
+            browseAll.innerHTML = '';
+            
+            categories.forEach(category => {
+                const browseCard = document.createElement('div');
+                browseCard.className = `${category.color} rounded-lg p-4 cursor-pointer hover:opacity-90 transition-opacity`;
+                browseCard.innerHTML = `
+                    <i class="fas ${category.icon} text-2xl mb-2"></i>
+                    <h4 class="font-semibold">${category.name}</h4>
+                `;
+                browseCard.addEventListener('click', () => filterByCategory(category.name));
+                browseAll.appendChild(browseCard);
+            });
+        }
+
+        // Display popular stations
+        function displayPopularStations(popularStations) {
+            const container = document.getElementById('popular-stations');
+            container.innerHTML = '';
+            
+            popularStations.forEach(station => {
+                const stationCard = createStationCard(station);
+                container.appendChild(stationCard);
+            });
+        }
+
+        // Display genre recommendations
+        function displayGenreRecommendations() {
+            const container = document.getElementById('genre-recommendations');
+            container.innerHTML = '';
+            
+            // Group stations by tags
+            const genreGroups = {};
+            stations.forEach(station => {
+                if (station.tags) {
+                    const tags = station.tags.split(',');
+                    tags.forEach(tag => {
+                        tag = tag.trim();
+                        if (!genreGroups[tag]) {
+                            genreGroups[tag] = [];
+                        }
+                        if (genreGroups[tag].length < 4) {
+                            genreGroups[tag].push(station);
+                        }
+                    });
+                }
+            });
+            
+            // Display top 5 genres
+            Object.keys(genreGroups).slice(0, 5).forEach(genre => {
+                const genreSection = document.createElement('div');
+                genreSection.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">${genre}</h3>
+                        <a href="#" class="text-sm text-gray-400 hover:text-white">SEE ALL</a>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        ${genreGroups[genre].map(station => createStationCard(station).outerHTML).join('')}
+                    </div>
+                `;
+                container.appendChild(genreSection);
+            });
+        }
+
+        // Create station card
+        function createStationCard(station) {
+            const card = document.createElement('div');
+            card.className = 'station-card bg-gray-800 rounded-lg p-4 cursor-pointer';
+            
+            const logoUrl = station.favicon || 'https://via.placeholder.com/100';
+            const isFavorite = favorites.some(fav => fav.stationuuid === station.stationuuid);
+            
+            card.innerHTML = `
+                <div class="flex items-center mb-3">
+                    <img src="${logoUrl}" alt="${station.name}" class="w-12 h-12 rounded-lg mr-3">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold truncate-text">${station.name}</h4>
+                        <p class="text-sm text-gray-400 truncate-text">${station.country || 'Unknown'}</p>
+                    </div>
+                    <button class="favorite-station-btn text-gray-400 hover:text-pink-500 flex-shrink-0" data-station='${JSON.stringify(station)}'>
+                        <i class="${isFavorite ? 'fas' : 'far'} fa-heart"></i>
+                    </button>
+                </div>
+                <div class="text-sm text-gray-400">
+                    <p><i class="fas fa-signal mr-1"></i> ${Math.round(station.bitrate || 0)} kbps</p>
+                </div>
+            `;
+            
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.favorite-station-btn')) {
+                    playStation(station);
+                }
+            });
+            
+            const favoriteBtn = card.querySelector('.favorite-station-btn');
+            favoriteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleFavorite(station);
+            });
+            
+            return card;
+        }
+
+        // Create recommendation card for full player
+        function createRecommendationCard(station) {
+            const card = document.createElement('div');
+            card.className = 'recommendation-card bg-gray-800 rounded-lg p-3 flex-shrink-0 w-40 cursor-pointer';
+            
+            const logoUrl = station.favicon || 'https://via.placeholder.com/100';
+            
+            card.innerHTML = `
+                <img src="${logoUrl}" alt="${station.name}" class="w-full h-24 object-cover rounded-lg mb-2">
+                <h4 class="font-semibold text-sm truncate-text">${station.name}</h4>
+                <p class="text-xs text-gray-400 truncate-text">${station.country || 'Unknown'}</p>
+            `;
+            
+            card.addEventListener('click', () => {
+                playStation(station);
+            });
+            
+            return card;
+        }
+
+        // Display recommendations in full player
+        function displayPlayerRecommendations() {
+            playerRecommendations.innerHTML = '';
+            
+            // Get recommendations based on current station's tags or country
+            let recommendations = [];
+            
+            if (currentStation) {
+                // Find stations with similar tags
+                if (currentStation.tags) {
+                    const currentTags = currentStation.tags.split(',').map(tag => tag.trim());
+                    recommendations = stations.filter(station => {
+                        if (station.stationuuid === currentStation.stationuuid) return false;
+                        
+                        if (station.tags) {
+                            const stationTags = station.tags.split(',').map(tag => tag.trim());
+                            return currentTags.some(tag => stationTags.includes(tag));
+                        }
+                        return false;
+                    }).slice(0, 5);
+                }
+                
+                // If not enough recommendations, use stations from same country
+                if (recommendations.length < 5 && currentStation.country) {
+                    const countryStations = stations.filter(station => {
+                        if (station.stationuuid === currentStation.stationuuid) return false;
+                        return station.country === currentStation.country;
+                    });
+                    
+                    // Add unique stations
+                    countryStations.forEach(station => {
+                        if (!recommendations.some(r => r.stationuuid === station.stationuuid) && recommendations.length < 5) {
+                            recommendations.push(station);
+                        }
+                    });
+                }
+            }
+            
+            // If still not enough, use popular stations
+            if (recommendations.length < 5) {
+                const popularStations = stations.filter(station => {
+                    return !recommendations.some(r => r.stationuuid === station.stationuuid) && 
+                           station.stationuuid !== (currentStation ? currentStation.stationuuid : null);
+                }).slice(0, 5 - recommendations.length);
+                
+                recommendations = [...recommendations, ...popularStations];
+            }
+            
+            // Display recommendations
+            recommendations.forEach(station => {
+                const recommendationCard = createRecommendationCard(station);
+                playerRecommendations.appendChild(recommendationCard);
+            });
+        }
+
+        // Filter stations by category
+        function filterByCategory(category) {
+            const filtered = stations.filter(station => {
+                return station.tags && station.tags.toLowerCase().includes(category.toLowerCase());
+            });
+            
+            // Switch to search page and show results
+            showPage('search');
+            searchInput.value = category;
+            displaySearchResults(filtered);
+        }
+
+        // Play a radio station
+        function playStation(station) {
+            currentStation = station;
+            
+            // Add to recent
+            addToRecent(station);
+            
+            // Update player info
+            nowPlayingTitle.textContent = station.name;
+            nowPlayingArtist.textContent = station.country || 'Unknown';
+            fullPlayerTitle.textContent = station.name;
+            fullPlayerArtist.textContent = station.country || 'Unknown';
+            
+            // Update album art
+            albumArt.src = station.favicon || 'https://via.placeholder.com/300';
+            
+            // Update favorite button
+            updateFavoriteButton();
+            
+            // Load and play audio
+            audio.src = station.url;
+            audio.play().catch(e => {
+                console.error('Error playing audio:', e);
+                isPlaying = false;
+                updatePlayPauseButton();
+            });
+            isPlaying = true;
+            updatePlayPauseButton();
+            
+            // Update recommendations
+            displayPlayerRecommendations();
+            
+            // If player is not expanded, expand it
+            if (!playerExpanded) {
+                expandPlayer();
+            }
+        }
+
+        // Toggle favorite
+        function toggleFavorite(station) {
+            const index = favorites.findIndex(fav => fav.stationuuid === station.stationuuid);
+            
+            if (index > -1) {
+                favorites.splice(index, 1);
+            } else {
+                favorites.push(station);
+            }
+            
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            updateFavoriteButton();
+            updateFavoriteStations();
+            
+            // Update all favorite buttons in the current view
+            document.querySelectorAll('.favorite-station-btn').forEach(btn => {
+                const btnStation = JSON.parse(btn.dataset.station);
+                const icon = btn.querySelector('i');
+                if (btnStation.stationuuid === station.stationuuid) {
+                    icon.className = favorites.some(fav => fav.stationuuid === station.stationuuid) ? 'fas fa-heart' : 'far fa-heart';
+                }
+            });
+        }
+
+        // Update favorite button
+        function updateFavoriteButton() {
+            if (!currentStation) return;
+            
+            const isFavorite = favorites.some(fav => fav.stationuuid === currentStation.stationuuid);
+            favoriteBtn.innerHTML = `<i class="${isFavorite ? 'fas' : 'far'} fa-heart"></i>`;
+            fullPlayerFavoriteBtn.innerHTML = `<i class="${isFavorite ? 'fas' : 'far'} fa-heart text-xl"></i>`;
+        }
+
+        // Add to recent
+        function addToRecent(station) {
+            // Remove if already exists
+            recent = recent.filter(item => item.stationuuid !== station.stationuuid);
+            
+            // Add to beginning
+            recent.unshift(station);
+            
+            // Keep only last 20
+            if (recent.length > 20) {
+                recent = recent.slice(0, 20);
+            }
+            
+            localStorage.setItem('recent', JSON.stringify(recent));
+            updateRecentStations();
+        }
+
+        // Update favorite stations display
+        function updateFavoriteStations() {
+            const container = document.getElementById('favorite-stations');
+            const noFavorites = document.getElementById('no-favorites');
+            
+            if (favorites.length === 0) {
+                container.innerHTML = '';
+                noFavorites.classList.remove('hidden');
+            } else {
+                noFavorites.classList.add('hidden');
+                container.innerHTML = '';
+                favorites.forEach(station => {
+                    const stationCard = createStationCard(station);
+                    container.appendChild(stationCard);
+                });
+            }
+        }
+
+        // Update recent stations display
+        function updateRecentStations() {
+            const container = document.getElementById('recent-stations');
+            const noRecent = document.getElementById('no-recent');
+            
+            if (recent.length === 0) {
+                container.innerHTML = '';
+                noRecent.classList.remove('hidden');
+            } else {
+                noRecent.classList.add('hidden');
+                container.innerHTML = '';
+                recent.forEach(station => {
+                    const recentItem = document.createElement('div');
+                    recentItem.className = 'station-card bg-gray-800 rounded-lg p-4 flex items-center cursor-pointer';
+                    
+                    const logoUrl = station.favicon || 'https://via.placeholder.com/100';
+                    
+                    recentItem.innerHTML = `
+                        <img src="${logoUrl}" alt="${station.name}" class="w-16 h-16 rounded-lg mr-4">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-semibold truncate-text">${station.name}</h4>
+                            <p class="text-sm text-gray-400 truncate-text">${station.country || 'Unknown'}</p>
+                        </div>
+                        <button class="play-recent-btn bg-pink-500 hover:bg-pink-600 rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0" data-station='${JSON.stringify(station)}'>
+                            <i class="fas fa-play text-white"></i>
+                        </button>
+                    `;
+                    
+                    recentItem.addEventListener('click', (e) => {
+                        if (!e.target.closest('.play-recent-btn')) {
+                            playStation(station);
+                        }
+                    });
+                    
+                    const playBtn = recentItem.querySelector('.play-recent-btn');
+                    playBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        playStation(station);
+                    });
+                    
+                    container.appendChild(recentItem);
+                });
+            }
+        }
+
+        // Search functionality
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            
+            if (query.length === 0) {
+                autocompleteDropdown.classList.add('hidden');
+                searchResults.classList.add('hidden');
+                return;
+            }
+            
+            // Filter stations
+            const filtered = stations.filter(station => 
+                station.name.toLowerCase().includes(query) ||
+                (station.country && station.country.toLowerCase().includes(query)) ||
+                (station.tags && station.tags.toLowerCase().includes(query))
+            );
+            
+            // Show autocomplete dropdown
+            if (filtered.length > 0) {
+                autocompleteDropdown.innerHTML = '';
+                filtered.slice(0, 5).forEach(station => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 hover:bg-gray-700 cursor-pointer flex items-center';
+                    item.innerHTML = `
+                        <img src="${station.favicon || 'https://via.placeholder.com/40'}" alt="${station.name}" class="w-10 h-10 rounded mr-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="font-semibold truncate-text">${station.name}</div>
+                            <div class="text-sm text-gray-400 truncate-text">${station.country || 'Unknown'}</div>
+                        </div>
+                    `;
+                    item.addEventListener('click', () => {
+                        searchInput.value = station.name;
+                        addToRecentSearches(station.name);
+                        displaySearchResults([station]);
+                        autocompleteDropdown.classList.add('hidden');
+                    });
+                    autocompleteDropdown.appendChild(item);
+                });
+                autocompleteDropdown.classList.remove('hidden');
+            } else {
+                autocompleteDropdown.classList.add('hidden');
+            }
+        });
+
+        // Display search results
+        function displaySearchResults(results) {
+            searchResults.classList.remove('hidden');
+            searchResultsContainer.innerHTML = '';
+            
+            if (results.length === 0) {
+                searchResultsContainer.innerHTML = '<p class="text-gray-400">No results found</p>';
+                return;
+            }
+            
+            results.forEach(station => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'bg-gray-800 rounded-lg p-4 flex items-center cursor-pointer hover:bg-gray-700';
+                
+                const logoUrl = station.favicon || 'https://via.placeholder.com/100';
+                const isFavorite = favorites.some(fav => fav.stationuuid === station.stationuuid);
+                
+                resultItem.innerHTML = `
+                    <img src="${logoUrl}" alt="${station.name}" class="w-16 h-16 rounded-lg mr-4">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold truncate-text">${station.name}</h4>
+                        <p class="text-sm text-gray-400 truncate-text">${station.country || 'Unknown'}</p>
+                    </div>
+                    <button class="favorite-result-btn text-gray-400 hover:text-pink-500 mr-3 flex-shrink-0" data-station='${JSON.stringify(station)}'>
+                        <i class="${isFavorite ? 'fas' : 'far'} fa-heart"></i>
+                    </button>
+                    <button class="play-result-btn bg-pink-500 hover:bg-pink-600 rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0" data-station='${JSON.stringify(station)}'>
+                        <i class="fas fa-play text-white"></i>
+                    </button>
+                `;
+                
+                resultItem.addEventListener('click', (e) => {
+                    if (!e.target.closest('.favorite-result-btn') && !e.target.closest('.play-result-btn')) {
+                        playStation(station);
+                    }
+                });
+                
+                const favoriteBtn = resultItem.querySelector('.favorite-result-btn');
+                favoriteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleFavorite(station);
+                });
+                
+                const playBtn = resultItem.querySelector('.play-result-btn');
+                playBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    playStation(station);
+                });
+                
+                searchResultsContainer.appendChild(resultItem);
+            });
+        }
+
+        // Add to recent searches
+        function addToRecentSearches(query) {
+            recentSearches = recentSearches.filter(item => item !== query);
+            recentSearches.unshift(query);
+            
+            if (recentSearches.length > 10) {
+                recentSearches = recentSearches.slice(0, 10);
+            }
+            
+            localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+            displayRecentSearches();
+        }
+
+        // Display recent searches
+        function displayRecentSearches() {
+            recentSearchesContainer.innerHTML = '';
+            
+            recentSearches.forEach(search => {
+                const searchTag = document.createElement('button');
+                searchTag.className = 'bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-full text-sm';
+                searchTag.textContent = search;
+                searchTag.addEventListener('click', () => {
+                    searchInput.value = search;
+                    searchInput.dispatchEvent(new Event('input'));
+                });
+                recentSearchesContainer.appendChild(searchTag);
+            });
+        }
+
+        // Navigation
+        function setupNavigation() {
+            // Desktop navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const page = link.dataset.page;
+                    showPage(page);
+                    
+                    // Update active state
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('nav-active'));
+                    link.classList.add('nav-active');
+                });
+            });
+            
+            // Mobile navigation
+            document.querySelectorAll('.nav-link-mobile').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const page = link.dataset.page;
+                    showPage(page);
+                    
+                    // Update active state
+                    document.querySelectorAll('.nav-link-mobile').forEach(l => {
+                        l.classList.remove('nav-active');
+                        l.classList.add('text-gray-400');
+                    });
+                    link.classList.add('nav-active');
+                    link.classList.remove('text-gray-400');
+                });
+            });
+        }
+
+        // Show page
+        function showPage(page) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+            
+            // Show selected page
+            document.getElementById(`${page}-page`).classList.remove('hidden');
+            
+            currentPage = page;
+        }
+
+        // Toggle play/pause
+        function togglePlayPause() {
+            if (!currentStation) return;
+            
+            if (isPlaying) {
+                audio.pause();
+            } else {
+                audio.play().catch(e => {
+                    console.error('Error playing audio:', e);
+                    isPlaying = false;
+                    updatePlayPauseButton();
+                });
+            }
+            isPlaying = !isPlaying;
+            updatePlayPauseButton();
+        }
+
+        // Update play/pause button
+        function updatePlayPauseButton() {
+            const icon = isPlaying ? 'fa-pause' : 'fa-play';
+            playPauseBtn.innerHTML = `<i class="fas ${icon} text-white"></i>`;
+            fullPlayerPlayPause.innerHTML = `<i class="fas ${icon} text-white text-xl"></i>`;
+        }
+
+        // Expand player to full screen
+        function expandPlayer() {
+            playerExpanded = true;
+            capsulePlayer.classList.add('hidden');
+            fullPlayer.classList.remove('hidden');
+            fullPlayer.classList.add('capsule-to-full');
+        }
+
+        // Collapse player to capsule
+        function collapsePlayer() {
+            playerExpanded = false;
+            fullPlayer.classList.add('hidden');
+            capsulePlayer.classList.remove('hidden');
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            if (audio.duration) {
+                const progress = (audio.currentTime / audio.duration) * 100;
+                progressBar.value = progress;
+                
+                currentTime.textContent = formatTime(audio.currentTime);
+                totalTime.textContent = formatTime(audio.duration);
+            }
+        }
+
+        // Format time (seconds to mm:ss)
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+        }
+
+        // Set audio current time based on progress bar
+        function setProgress() {
+            const percent = progressBar.value;
+            audio.currentTime = (percent / 100) * audio.duration;
+        }
+
+        // Play previous station
+        function playPreviousStation() {
+            if (!currentStation || stations.length === 0) return;
+            
+            const currentIndex = stations.findIndex(station => station.stationuuid === currentStation.stationuuid);
+            const prevIndex = (currentIndex - 1 + stations.length) % stations.length;
+            playStation(stations[prevIndex]);
+        }
+
+        // Play next station
+        function playNextStation() {
+            if (!currentStation || stations.length === 0) return;
+            
+            const currentIndex = stations.findIndex(station => station.stationuuid === currentStation.stationuuid);
+            const nextIndex = (currentIndex + 1) % stations.length;
+            playStation(stations[nextIndex]);
+        }
+
+        // Event listeners
+        playPauseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePlayPause();
+        });
+
+        fullPlayerPlayPause.addEventListener('click', togglePlayPause);
+        capsulePlayer.addEventListener('click', expandPlayer);
+        backToCapsule.addEventListener('click', collapsePlayer);
+        progressBar.addEventListener('input', setProgress);
+        prevBtn.addEventListener('click', playPreviousStation);
+        nextBtn.addEventListener('click', playNextStation);
+        favoriteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (currentStation) {
+                toggleFavorite(currentStation);
+            }
+        });
+        fullPlayerFavoriteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (currentStation) {
+                toggleFavorite(currentStation);
+            }
+        });
+
+        // Update progress bar as audio plays
+        audio.addEventListener('timeupdate', updateProgress);
+
+        // Handle audio errors
+        audio.addEventListener('error', () => {
+            console.error('Error playing audio');
+            isPlaying = false;
+            updatePlayPauseButton();
+        });
+
+        // Swipe down to close full player (for touch devices)
+        let touchStartY = 0;
+        let touchEndY = 0;
+
+        fullPlayer.addEventListener('touchstart', (e) => {
+            touchStartY = e.changedTouches[0].screenY;
+        });
+
+        fullPlayer.addEventListener('touchend', (e) => {
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndY < touchStartY - 50) {
+                // Swipe up
+                return;
+            }
+            if (touchEndY > touchStartY + 50) {
+                // Swipe down
+                collapsePlayer();
+            }
+        }
+
+        // Initialize app
+        init();
+    </script>
+</body>
+</html>
